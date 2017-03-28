@@ -54,11 +54,12 @@ final class Atomic<A> {
     }
     
     var value: A {
-        get {
-            return queue.sync { self._value }
-        }
-        set {
-            queue.sync { self._value = newValue }
+        return queue.sync { self._value }
+    }
+
+    func mutate(_ transform: (inout A) -> ()) {
+        queue.sync {
+            transform(&self._value)
         }
     }
 }
@@ -82,14 +83,14 @@ final class Signal<A> {
     
     func subscribe(callback: @escaping (Result<A>) -> ()) -> Disposable {
         let token = UUID()
-        self.callbacks.value[token] = callback
+        self.callbacks.mutate { $0[token] = callback }
         return Disposable {
-            self.callbacks.value[token] = nil
+            self.callbacks.mutate { $0[token] = nil }
         }
     }
     
     func keepAlive(_ object: Any) {
-        objects.value.append(object)
+        objects.mutate { $0.append(object) }
     }
     
     func map<B>(_ transform: @escaping (A) -> B) -> Signal<B> {
